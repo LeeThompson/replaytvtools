@@ -1,0 +1,28 @@
+
+To use: 
+
+Run ReplayPC or another suitable program to download the guide from the Replay.   The file is typically called "guide.dat".
+
+Run GuideParser with the parameters you want against the guide, by default output will go to STDOUT.    
+
+e.g. 
+
+From a Command Prompt:
+
+replaypc 192.168.0.7 -g
+guideparser -f guide.dat > temp.txt
+notepad temp.txt
+
+
+
+
+
+If for any reason GuideParser crashes or shows incorrect data:
+
+1. Make sure you are only using a guide from a Replay 5000 model running 4.5.   This version of GuideParser will not operate properly with Replay 4000 or 4500 series models.
+2. Use WINZIP or another archiving program to archive the guide.dat file and send it to me with a note stating what error or incorrect data was seen.
+
+
+
+	
+	

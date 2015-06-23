@@ -1,0 +1,592 @@
+ReplayTV Tools
+1.0 Revision 4
+
+Written by "agent-x"
+Documention by Lee Thompson and "agent-x"
+
+
+-----------------------------------------------------------------------------
+                            About ReplayTV Tools
+-----------------------------------------------------------------------------
+
+_____
+Terms
+
+RTV	ReplayTV
+RTV4K	ReplayTV 4000 Series PVR
+RTV5K	ReplayTV 5000 Series PVR
+PVR	Personal Video Recorder
+MPEG-2	Video compression format used on RTV, TiVo, DVD,  SuperVCD and  many 
+	other video applications.
+DVA	DVArchive.  Popular third party Java based application for  ReplayTV 
+	owners.  http://dvarchive.sourceforge.net
+
+
+____________
+Introduction
+
+ReplayTV tools are a collection of command line utilities to work with MPEG-2
+streams for the ReplayTV 5000 series Personal Video Recorder.   This document
+also refers to another third party software package called "DVArchive"  which
+is  a  Java  based  application for  downloading video from  a  ReplayTV  and 
+streaming video back to one (along other things).
+
+These tools will allow you to do the following: 
+
+* Edit downloaded shows without reencoding; stream them with DVArchive
+* Convert RTV files for use with DVD Authoring
+* Convert RTV4K MPEGs for streaming to a RTV5K
+* Convert MPEG-2 streams and stream to a RTV5K with DVArchive
+
+
+
+_________
+The Tools
+
+EVTDUMP parses  the .evt file  and creates an edit  script marking  perceived 
+commercial breaks.    Source code is included for this tool.
+
+RTVEDIT uses an  edit  script for input and  edits one or more source  MPEG-2
+files to produce a new MPEG-2 file with the edits performed.   It's secondary
+function  is  to convert RTV4K series  streams to RTV5K  compatible  streams.   
+Source code is not available. 
+
+RTVCONVERT  processes an  MPEG-2 and produces a  file set compatible with the 
+RTV5K units and DVD authoring tools.  Source code is not available.
+
+
+
+____
+URLs
+
+DVArchive		http://dvarchive.sourceforge.net
+TMPGEnc			http://www.tmpgenc.net
+DVDRHelp		http://www.dvdrhelp.com
+VirtualDub (MPEG2)	http://fcchandler.home.comcast.net/stable/index.html
+VirtualDub (MPEG2)	http://es.geocities.com/dextstuff/
+
+-----------------------------------------------------------------------------
+                            What's New in Rev 4?
+-----------------------------------------------------------------------------
+
+Revised Documentation
+   RTVEDIT: if no associated ndx is found for the given mpg, create a 5k ndx
+   EVTDUMP: added -p and -i switches to set program time and ignore time
+   RTVCONV: added -d switch to write demultiplexed streams (.m2v, .mp2)
+   RVTCONV: added filtering of RTVEDIT-ed files for DVD authoring
+
+
+EVTDUMP:
+
+* EVTDUMP  switches  may be useful for changing detection parameters  without 
+  recompiling.   Specify times in seconds.   For example,   a  30 minute show 
+  may have program  segments shorter than the default 5 minutes, use -p180 to
+  set the program time limit to 3 minutes.
+
+
+RTVEDIT:
+
+* RTVEDIT  will now re-build a .ndx corresponding to the original  .mpg if no
+  .ndx is found. It will *assume*  the mpg is a  RTV5K  stream.   There is no 
+  check for this and results on a  non-RTV5K stream  are unpredictable  (read
+  "bad").  An .ndx is required for editing the stream,  so once the  .ndx  is 
+  re-generated, you can run RTVEDIT on the fileset as normal.
+
+
+RTVCONVERT:
+
+* RTVCONVERT  can now process an RTVEDIT-ed mpg and produce a stream suitable 
+  for DVD  authoring.   Simply run  RTVCONVERT on  the output  of an  RTVEDIT 
+  stream and use the resulting stream in your DVD authoring program.
+
+* If your  DVD authoring  program accepts  demultiplexed streams,  use the -d
+  switch to have RTVCONVERT write .m2v and .mp2 files directly.
+
+
+-----------------------------------------------------------------------------
+				  EVTDUMP
+-----------------------------------------------------------------------------
+
+
+Usage: 
+
+evtdump [-p<program_time>] [-i<ignore_time>] [-graph] <evt-file>
+
+
+EVTDUMP parses  the .evt file  and creates an edit  script marking  perceived 
+commercial breaks.    The edit script is sent to STDOUT.    Using -graph will
+dump the evt  entries in a graph format too -  useful for looking at the edit 
+points.
+
+The  edit script is  used by RTVEDIT  which performs the actual edits on  the 
+MPEG file.
+
+You can tune the commercial detection algorithim at the command line with the
+-p and -i parameters.    Specify the times in seconds.    For  example, a  30 
+minute show may have program segments shorter than the default 5 minutes, use
+-p180 to set the program time limit to 3 minutes.
+
+Program time is the lower threshold for "program segment" detection.   If two
+fades occur greater than this time, the segment is treated as a program.  The
+default value is 300 (5 minutes).
+
+Ignore time is the upper threshold for "scene" detection.  If two fades occur
+within this time, the segment is ignored.  The default value is 0.
+
+Be advised that there are some evt files which captured every audio sample as
+a "low volume" sample, although the audio levels were not low. This triggered
+the audio event for every single audio frame and you'd get an evt  file > 1MB
+per hour.     EVTDUMP will normalize these events so that it can do something 
+with them,  otherwise  the whole program  would be treated as a single  large 
+segment.
+
+Once you have EVTDUMP  produce a text file you'll probably want to edit it in
+notepad or vi (or a suitable text editor) and run RTVEDIT on it.
+
+
+The output of EVTDUMP is as follows (see Figure 1):
+
+The first character is the entry type:
+  F - file name of the source mpg (from an RTV set, .mpg/.evt/.ndx)
+  A - add point time (punch in)
+  D - delete point time (punch out)
+  E - end editing
+
+Also supported by RTVEDIT:
+  T - target for new file set (optional)
+
+
+Chains of  A or D entries are ok, the RTVEDIT tool will use the last entry in
+the chain.  We only care about the transitions from A->D and D->A.
+
+If the first entry is a A, then the mpeg starts copying at that time.  If the
+first entry is a D, there is an implicit A000:00.000 to start copying at  the
+start of the file.     The EVTDUMP tool will try to locate what it thinks are
+commercial breaks and add the appropriate entries to the output script.
+
+Normally, this works fine for TV shows,  but for special edit situations  (or 
+fine tuning the edit  points),   you can manually edit  the times in the edit
+script.  Sometimes, it'll catch a  "blip"  of a commercial at an edit  point, 
+but you can edit those out to get a smooth transition.
+
+  _______
+  Example
+
+  D:\video\Local_Guide> evtdump "Stargate SG-1 - Revisions.evt" > evt.txt
+  D:\video\Local_Guide> type evt.txt
+  FStargate SG-1 - Revisions.mpg
+  A000:51.147
+  D003:28.305
+  A005:34.156
+  A006:04.587
+  D017:48.467
+  A020:47.321
+  A021:17.452
+  D027:17.890
+  A029:18.122
+  A029:48.109
+  A030:28.228
+  D036:27.278
+  A039:53.226
+  A040:23.639
+  D047:00.935
+  A049:47.267
+  D059:45.907
+  A060:43.832
+  A060:48.875
+  E
+
+                                  Figure 1
+
+
+-----------------------------------------------------------------------------
+				  RTVEDIT
+-----------------------------------------------------------------------------
+
+
+Usage: rtvedit [-a|s] [-t1] [edit-script]
+
+RTVEDIT uses an  edit  script for input and  edits one or more source  MPEG-2
+files to produce a new MPEG-2 file with the edits performed.   It's secondary
+function  is  to convert RTV4K series  streams to RTV5K  compatible  streams.   
+
+The edit script may be specified as an input or through  STDIN  (you can pipe
+to it), and generates a new set of RTV files (.mpg, .ndx, .evt) with the edit
+points applied.    If  you capture from  an anamorphic  source,  use  the  -a 
+(anamorphic) flag to turn  the resulting mpg into a 16:9 mpg  (RTV will still
+play these as 4:3, i.e. no letterbox),  but they will play as  16:9 on PCs or
+dvds.  The -s (standard) flag will set the aspect to 4:3.
+
+As RTVEDIT runs,  it will display all  the real edit points and  their source 
+file locations.   It writes a new .ndx for the edited mpeg and writes a dummy
+.evt that contains entries for the edit points.    RTV won't do anything with
+this .evt (it won't see anything in there as commercial breaks), but it still
+needs this file.
+
+  _______
+  Example
+
+  D:\video\Local_Guide> rtvedit evt.txt
+  Source: Stargate SG-1 - Revisions.mpg
+  Target: Stargate SG-1 - Revisions1.mpg
+  Time=(000:51.000, 003:28.495) SCR=000:00.000 File=(00018760B0, 000691603C)
+  Time=(006:04.495, 017:48.495) SCR=002:37.495 File=(000B3A5A0C, 001E6A1004)
+  Time=(021:17.495, 027:18.000) SCR=014:21.495 File=(0024D8D98C, 002E238D70)
+  Time=(030:28.000, 036:27.495) SCR=020:22.000 File=(0034028578, 003D50B6FC)
+  Time=(040:23.495, 047:01.000) SCR=026:21.495 File=(004463F188, 004F5B6E00)
+  Time=(049:47.495, 059:46.000) SCR=032:59.000 File=(00543E9404, 00641E6D48)
+  Time=(060:49.000, 060:57.000) SCR=042:57.505 File=(0065E052C8, 006625C9F0)
+  New Program Time: 043:09.393
+  Edit Time: 001:39.573
+
+  D:\video\Local_Guide> dir starg*
+  07/13/2003  09:41 PM            58,376 Stargate SG-1 - Revisions.evt
+  07/13/2003  11:15 PM     1,713,795,072 Stargate SG-1 - Revisions.mpg
+  07/13/2003  09:41 PM           175,568 Stargate SG-1 - Revisions.ndx
+  07/14/2003  11:06 PM               200 Stargate SG-1 - Revisions1.evt
+  07/14/2003  11:06 PM     1,173,317,616 Stargate SG-1 - Revisions1.mpg
+  07/14/2003  11:06 PM           124,136 Stargate SG-1 - Revisions1.ndx
+
+                                  Figure 2
+
+
+The new files end with a 1 suffix - notice it's over  500MB smaller.   If the
+new files look good,  simply delete the originals and rename the new files to
+their original names.  DVArchive will then serve out the edited files to your
+RTV.
+
+If you want to fine tune the edited mpeg,  just edit the times in the  script
+and run it again.   I've found the default script out of EVTDUMP to do a good
+job at  removing  commercials  from US broadcast TV shows,  but not good  for
+foreign or premium channel shows.  For those, you'll want to edit or generate
+a script manually.
+
+
+______________________________
+Specifying Paths and File Sets
+
+Normally,  the path to the mpg is specified in the edit line a nd the ndx and
+evt  are  in the  same  location.    If  you normally have these  files  in a
+different location,  use the  "rtve_ndxpath"  and  "rtve_evtpath" environment
+variables  to set a default path for them.   If set, RTVEDIT  will look there
+instead.
+
+  C:\> set rtve_ndxpath=d:\ndx_path
+  C:\> set rtve_evtpath=d:\evt_path
+
+
+You can override default path settings,  by specifying them in the edit line. 
+Use a ; seperated list with each file explicitly specified:
+
+
+  Fd:\path\mpg\file.mpg;d:\path\ndx\file.ndx;d:\path\evt\file.evt
+
+
+Or use a file name  without an  extension,  this  puts all files in the  same 
+location:
+
+
+  Fd:\path\local_guide\file
+
+                                   
+
+
+_______________________
+Specifying a Target Set
+
+A 'T' entry using any of the above formats  will place the target fileset  in
+the location specified.   You  can use it to  generate the target files on  a
+different  drive than the source or even rename the source fileset so you can
+generate the target fileset with the names of the originals.  
+
+IMPORTANT: Be careful using this since any existing files are overwritten!
+
+
+  Td:\newpath\file
+
+
+______________
+Mixing Methods
+
+Mix  together segments  from different streams to create a favorites  clip or
+any mixing you want.    You should only  use streams  recorded  the same  way 
+(standard, medium or high).  Mixing from different stream modes is untested.
+
+
+  Tmy favorite scenes
+  Fepisode 1
+  A025:00.000
+  D032:00.000
+  Fepisode 2
+  A003:00.000
+  D009:00.000
+  Fepisode 3
+  A012:00.000
+  D015:00.000
+  E
+
+
+Split a stream into multiple segments in a single edit file.   You could have
+done this before using different edit files for each segment, but now you can
+do it all at once.
+
+
+  Fa really long program
+  Tfirst part
+  A000:00.000
+  D045:00.000
+  Tsecond part
+  A045:00.000
+  D090:00.000
+  Tthird part
+  A090:00.000
+  D135:00.000
+  E
+
+
+Re-order segments from the same stream.   Previously, segment times had to be
+increasing, but now you can specify times anywhere in the stream.
+
+  Fa normal program
+  Ta backwards program
+  A040:00.000
+  D050:00.000
+  A030:00.000
+  D040:00.000
+  A020:00.000
+  D030:00.000
+  A010:00.000
+  D020:00.000
+  A000:00.000
+  D010:00.000
+  E
+
+
+
+
+____________________________________________
+Converting from ReplayTV 4000 Series Streams
+
+RTVEDIT will automatically detect whether the source is a 4K  fileset or a 5K
+fileset, so you don't need to do anything for this conversion.  
+
+Run it just like you would for 5K files  and the resulting file will be  able
+to stream to a 5K  over  DVArchive.   Please note that the evt file generated
+does NOT  contain  any commercial data from the 4K ndx  -  it's just there to
+allow it to stream. 
+
+There's no automated way to get an edit text for  4K files,  so you will have
+to make one manually.   If you just want to convert the entire file, you only
+need 2 lines:
+
+
+  FDead Like Me - Reaper Madness.mpg
+  E
+
+
+  _______
+  Example
+
+  > rtvedit edl4k.txt
+  RTV 4K Source - EXPERIMENTAL - STREAMS MAY NOT PLAY!
+  Source: Dead Like Me - Reaper Madness.mpg
+  Target: Dead Like Me - Reaper Madness1.mpg
+  Time=(000:00.495, 002:32.480) SCR=000:00.495 File=(0000000830, 00024DD28C)
+  New Program Time: 002:31.985
+  Edit Time: 000:02.333
+
+                                    Figure 3
+
+
+
+The  "Dead Like Me - Reaper Madness1.mpg"  file,  and associated ndx and evt,
+files are ready for RTV5K streaming.
+
+You can also add a "T"  line in the edl4k.txt to direct the new file set to a
+different directory and/or filename.
+
+
+  FDead Like Me - Reaper Madness.mpg
+  TRTV5K\Dead Like Me - Reaper Madness.mpg
+  E
+
+
+
+____________________________________
+Editing Events With External Editors
+
+Since RVTEDIT  is intended to use times from EVTDUMP,   the times used in the
+edit list are  based off the  .ndx/.evt clock  (which is  different from  the
+stream clock).   If  you are creating an edit list manually,  you must use an
+application that will give you frame times  (not MPEG times)  or your results
+will be off.    The  -t1  flag  allows  using  frame times from  an  external
+application.    This only works for original RTV 5K streams (not converted or
+edited).
+
+VirtualDub-MPEG2, 1.5.4 or later,  is recommended  for manually  finding edit
+times.   For best results,  hold SHIFT to snap to  I-frames and  pick the one
+where you want the edit to occur.  Once you've created the edit list, use:
+
+  rtvedit -t1 <edit-script>
+
+This will  adjust the script times to  the closest editable locations in  the
+stream.    This should be much more accurate (within 2 frames from my testing
+with medium quality streams).
+
+
+
+
+
+-----------------------------------------------------------------------------
+				 RTVCONVERT
+-----------------------------------------------------------------------------
+
+
+Usage: rtvconvert [-d] <source.mpg> <dest[.mpg]>
+
+RTVCONVERT performs a conversion  on any  qualifying  MPEG-2 file  to a RTV5K 
+fileset.   It has a secondary function of preparing a  RTV 5K  stream for use 
+with DVD authoring software.
+
+NOTE: Do not perform RTVCONVERT on a raw ReplayTV file.  It must be processed
+with RTVEDIT (even if no edits are made).
+
+
+MPEG-2 files should have the following attributes:
+
+Resolution:   any valid MPEG-2 width, 480+ height
+Framerate:    23.976, 29.97 and 59.94 
+Bitrate:      2-8Mpbs CBR/VBR
+Audio:        48KHz @ 112-320kbps, MPEG-1 layer II
+GOP struct:   1 seq per GOP
+
+MPEG-1 files such as "VideoCD" will not work without  transcoding first  with 
+TMPGEnc or a simliar tool.
+
+Streams can be interlaced (either field order) or progressive scan.  This has
+been tested with Vegas Video 4 and TMPGEnc encoded streams using the included
+templates and on a couple DVD compliant MPEG-2 streams.     
+
+Other  encoders  may work if you can  guarantee  the above settings in  those
+encoders.   You can convert RTV4K streams with this program as well,   but it
+is faster  and more reliable to use RTVEDIT on 4K streams  (plus you can edit
+them in the process).
+
+NOTE:  Although an EVT file is created using this tool,  no  usable  data  is 
+produced for commercial advance.
+
+
+
+_____________
+Targeting DVD
+
+A new option has been added as of Rev 4, -d for demux.   This will produce an
+MPEG-2 Video stream (.m2v) and an MPEG-1 Layer 2 Audio stream (.mp2).    
+
+If the -d option is specified, no .ndx or .evt will be created.
+
+_______
+TMPGEnc
+
+We've included two TMPGEnc templates for use with RTVCONVERT, they are:
+     ReplayTV5K (NTSC).mcf
+     ReplayTV5K (NTSCFilm).mcf
+
+
+TMPGEnc templates  are field locked for  fields which  should not be changed.
+Unlocked fields  may be  changed,  however, not all values  can be used  (the
+templates don't allow constraining value ranges).
+
+
+___________________
+Progressive Streams
+
+Progressive and MP@HL streams are EXPERIMENTAL.  Some progressive streams may
+be "altered" on the output to be playable on a RTV 5K.  These streams are NOT
+strictly MPEG-2 compliant (many PC decoders will still play them,     but any
+strict  decoder might not).      In  these  cases,  the  RTV5K  *REQUIRES*  a
+non-compliant stream (go figure).         It is not known how the RTV handles
+progressive streams with progressive output (YPbPr) enabled - use at your own
+risk.   Encoding a progressive stream will often give better quality for film
+or progressive based sources.
+
+
+
+
+
+-----------------------------------------------------------------------------
+				 DVD AUTHORING
+-----------------------------------------------------------------------------
+
+Tested: MediaChance DVDLab, Sonic Solutions DVDit, Sonic/Daikin Scenarist, 
+        Ulead MovieFactory 1.x.
+
+Preparing ReplayTV 5000 Streams for DVD Authoring is a two-step process.
+
+First you must run  RTVEDIT  on the file.   Because RTV streams tend to  have
+some  extra  information  at  the  beginning  of  the file this step must  be
+completed even if no edits are required.
+
+
+This is all you need for the edit file if there are no edits to be made:
+
+
+  FMyFile.mpg
+  E
+
+
+
+Next, run RTVCONVERT against the edited stream.     You may need to demux the
+stream for your DVD Authoring tool.   If this is required, you may use the -d
+option to have RTVCONVERT write demultiplexed  streams (.m2v, .mp2).  You can
+also use any external AC3 encoders if you wish.
+
+  __________________
+  Example (No Demux)
+  
+  > rtvconvert MyFile1.mpg MyFile_DVDReady.mpg
+  Source: MyFile1.mpg
+  Target: MyFile_DVDReady.mpg
+
+
+  _______________
+  Example (Demux)
+
+  > rtvconvert -d MyFile1.mpg MyFile_DVDReady
+  Source: MyFile1.mpg
+  Target: MyFile_DVDReady.m2v, MyFile_DVDReady.mp2
+
+                                    Figure 4
+
+
+
+Now the streams are ready for DVD authoring!    Simply import the assets into
+your DVD Authoring software and author your menus, add chapters, etc.
+
+
+
+-----------------------------------------------------------------------------
+			 TROUBLESHOOTING AND F.A.Q.
+-----------------------------------------------------------------------------
+
+Q. It seems to take a lot longer to run these tools than others with  simliar
+   hardware.   What should I look for?
+
+A. If you have Write Caching disabled under Windows XP or 2000  you will take
+   a 50-65% cut in processing time.
+
+
+
+Q. I ran  RTVCONVERT  on a stream  but the  DVD Authoring  package rejects it  
+   What's wrong?
+
+A. Chances are it's a ReplayTV stream that did not get processed with RTVEDIT
+   initially.   Run  the stream through  RTVEDIT  (even if no edits are made) 
+   and then re-run RTVCONVERT.   
+
+
+
+
+
+RTVTOOLS - REV 4
+END
