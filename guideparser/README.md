@@ -7,6 +7,8 @@ For help type "guideparser -?" at the command prompt.
 This is the final reslease of Guide Parser (December 18th, 2002)
 
 rtv43 is for ReplayTV 4000/4500 Series Models Running OS v4.3
+
 rtv45 is for ReplayTV 5000 Series Models Running OS v4.5
+
 rtv50 is for ReplayTV 5000 Series Models Running OS v5.0
 
