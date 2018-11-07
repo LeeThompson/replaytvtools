@@ -4,7 +4,7 @@ GuideParser is a console application for Windows 95/98/ME/NT/2000/XP and also co
 
 For help type "`guideparser -?`" at the command prompt.
 
-This is the final reslease of Guide Parser (December 18th, 2002)
+This is the final release of Guide Parser (December 18th, 2002)
 
 rtv43 is for ReplayTV 4000/4500 Series Models Running OS v4.3
 
